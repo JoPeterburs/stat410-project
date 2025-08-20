@@ -1,0 +1,473 @@
+---
+title: "410 Code"
+format: 
+  html:
+    self-contained: true
+    embed-resources: true
+editor: visual
+execute:
+  echo: true
+  eval: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+# 410 Project EDA
+
+```{r, include=FALSE}
+library(tidyverse)
+library(ggpubr)
+library(MASS)
+```
+
+```{r}
+wbb <- read.csv("C:/Users/gigip/personal/personal projects/march madness/WRegularSeasonDetailedResults.csv")
+
+# make effective field goal percentage variable
+wbb <- wbb %>% 
+  mutate(WeFG = (WFGM + 0.5 * WFGM3) / WFGA, 
+         LeFG = (LFGM + 0.5 * LFGM3) / LFGA) 
+```
+
+look at variables
+
+```{r}
+summary(wbb)
+```
+
+Variables I want to look at:
+
+-   eFG%
+
+    -   eFG% = (Field Goals Made + 0.5 \* Three-Point Field Goals Made) / Field Goal Attempts.
+
+-   num TO
+
+-   FT %
+
+-   num assists
+
+-   num rebounds
+
+-   score and score difference between winning and losing teams
+
+-   location (as factor)
+
+### Histograms and Boxplots of Score Distribution for Winning and Losing Teams
+
+```{r}
+wscore <- wbb %>% 
+  ggplot(aes(x = WScore)) + 
+  geom_histogram() + 
+  theme_classic() + 
+  scale_x_continuous(n.breaks = 10, limits = c(30,120))
+
+lscore <- wbb %>% 
+  ggplot(aes(x = LScore)) + 
+  geom_histogram() + 
+  theme_classic() + 
+  scale_x_continuous(n.breaks = 10, limits = c(30,120))
+
+plt <- ggarrange(wscore, lscore, ncol = 1, nrow = 2)
+annotate_figure(plt, top = text_grob("Score Distribution for Winning and Losing Teams", face = "bold", size = 12))
+```
+
+```{r}
+wscore <- wbb %>% 
+  ggplot(aes(x = WScore)) + 
+  geom_boxplot() + 
+  theme_classic() + 
+  scale_x_continuous(n.breaks = 9, limits = c(30,120))
+lscore <- wbb %>% 
+  ggplot(aes(x = LScore)) + 
+  geom_boxplot() + 
+  theme_classic() + 
+  scale_x_continuous(n.breaks = 9, limits = c(30,120))
+
+plt <- ggarrange(wscore, lscore, ncol = 1, nrow = 2)
+annotate_figure(plt, top = text_grob("Score Distribution for Winning and Losing Teams", face = "bold", size = 12))
+```
+
+### Score Difference Between Winning and Losing Teams
+
+```{r}
+score_diff <- wbb %>% 
+  mutate(difference = WScore - LScore)
+mean(score_diff$difference)
+median(score_diff$difference)
+
+plt <- score_diff %>% 
+  ggplot(aes(x = difference)) + 
+  geom_boxplot() + 
+  ggtitle("Distribution of Score Difference between Winning and Losing Teams") 
+
+plt + 
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  xlab('Difference in Score') + scale_x_continuous(n.breaks = 10)
+```
+
+```{r}
+wscore <- wbb %>% 
+  ggplot(aes(x = WeFG)) + 
+  geom_boxplot() + 
+  theme_classic() + 
+  scale_x_continuous(n.breaks = 10, limits = c(0,1))
+lscore <- wbb %>% 
+  ggplot(aes(x = LeFG)) + 
+  geom_boxplot() + 
+  theme_classic() + 
+  scale_x_continuous(n.breaks = 10, limits = c(0,1))
+
+plt <- ggarrange(wscore, lscore, ncol = 1, nrow = 2)
+annotate_figure(plt, top = text_grob("eFG% Distribution for Winning and Losing Teams", face = "bold", size = 12))
+
+# effective field goal % difference
+wbb %>% 
+  ggplot(aes(x = WeFG - LeFG)) + 
+  geom_boxplot() + 
+  theme_classic() + 
+  scale_x_continuous(n.breaks = 10, limits = c(-0.4,0.8)) + 
+  geom_vline(xintercept = 0, alpha = 0.2, color = 'red') + 
+  ggtitle("Difference in eFG%")
+median(wbb$WeFG - wbb$LeFG)
+```
+
+### Assists, Rebounds, and Turnovers
+
+```{r}
+# assists
+w <- wbb %>% 
+  ggplot(aes(x = WAst)) + 
+  geom_boxplot() + 
+  theme_classic() + 
+  scale_x_continuous(n.breaks = 10, limits = c(0,40))
+l <- wbb %>% 
+  ggplot(aes(x = LAst)) + 
+  geom_boxplot() + 
+  theme_classic() + 
+  scale_x_continuous(n.breaks = 10, limits = c(0,40))
+
+plt <- ggarrange(w, l, ncol = 1, nrow = 2)
+annotate_figure(plt, top = text_grob("Assist Distribution for Winning and Losing Teams", face = "bold", size = 12))
+```
+
+```{r}
+# rebounds
+mean(wbb$WOR + wbb$WDR)
+mean(wbb$LOR + wbb$LDR)
+
+w <- wbb %>% 
+  ggplot(aes(x = WOR + WDR)) + 
+  geom_boxplot() + 
+  theme_classic() + 
+  scale_x_continuous(n.breaks = 10, limits = c(0,100))
+l <- wbb %>% 
+  ggplot(aes(x = LOR + LDR)) + 
+  geom_boxplot() + 
+  theme_classic() + 
+  scale_x_continuous(n.breaks = 10, limits = c(0,100))
+
+plt <- ggarrange(w, l, ncol = 1, nrow = 2)
+annotate_figure(plt, top = text_grob("Rebound Distribution for Winning and Losing Teams", face = "bold", size = 12))
+```
+
+```{r}
+# turnovers
+w <- wbb %>% 
+  ggplot(aes(x = WTO)) + 
+  geom_boxplot() + 
+  theme_classic() + 
+  scale_x_continuous(n.breaks = 10, limits = c(0,55))
+l <- wbb %>% 
+  ggplot(aes(x = LTO)) + 
+  geom_boxplot() + 
+  theme_classic() + 
+  scale_x_continuous(n.breaks = 10, limits = c(0,55))
+
+plt <- ggarrange(w, l, ncol = 1, nrow = 2)
+annotate_figure(plt, top = text_grob("Turnover Distribution for Winning and Losing Teams", face = "bold", size = 12))
+```
+
+# 410 Project - Models
+
+```{r, include=FALSE}
+library(tidyverse)
+library(ggpubr)
+library(MASS)
+library(car)
+library(randomForest)
+library(caret)
+```
+
+```{r}
+wbb <- read.csv("C:/Users/gigip/personal/personal projects/march madness/WRegularSeasonDetailedResults.csv")
+
+# make effective field goal percentage variable
+wbb <- wbb %>% 
+  mutate(WeFG = 100*(WFGM + 0.5 * WFGM3) / WFGA, 
+         LeFG = 100*(LFGM + 0.5 * LFGM3) / LFGA) 
+```
+
+# Regression Analysis
+
+## Data Prep
+
+### Add Binary Outcome Variable
+
+-   add variable that signifies whether the home team won the game
+
+    -   1 if home team won
+
+    -   0 if home team lost
+
+    -   removed neutral games
+
+```{r}
+wbb$HomeWin <- ifelse(
+  wbb$WLoc == "H", 1,       # Home team won
+  ifelse(wbb$WLoc == "A", 0, NA)  # Home team lost (Away won)
+) 
+wbb <- wbb %>% 
+  filter(WLoc != "N") # Remove neutral games
+```
+
+### Put Variables in Terms of Home/Away Teams
+
+```{r}
+# Initialize new columns for home/away stats
+home_stats <- c("Score", "FGM", "FGA", "FGM3", "FGA3", "FTM", "FTA", "OR", "DR", "Ast", "TO", "Stl", "Blk", "eFG")
+away_stats <- paste0("Away_", home_stats)  # e.g., "Away_FGM"
+home_stats <- paste0("Home_", home_stats)  # e.g., "Home_FGM"
+
+# Loop through each stat and assign home/away values
+for (i in seq_along(home_stats)) {
+  stat <- gsub("Home_", "", home_stats[i])  # e.g., "FGM"
+
+  # If home team won, W stats = home team, L stats = away team
+  wbb[home_stats[i]] <- ifelse(
+    wbb$WLoc == "H",
+    wbb[[paste0("W", stat)]],  # e.g., WFGM
+    wbb[[paste0("L", stat)]]   # e.g., LFGM (home team lost)
+  )
+
+  wbb[away_stats[i]] <- ifelse(
+    wbb$WLoc == "H",
+    wbb[[paste0("L", stat)]],  # e.g., LFGM
+    wbb[[paste0("W", stat)]]   # e.g., WFGM
+  )
+}
+```
+
+### Create Additional Features
+
+```{r}
+# Field goal difference
+wbb$FGM_diff <- wbb$Home_FGM - wbb$Away_FGM
+
+# Turnover difference (negative means home team had more TOs)
+wbb$TO_diff <- wbb$Home_TO - wbb$Away_TO
+
+# Home/Away FG% ratio
+wbb$FG_pct_ratio <- (wbb$Home_FGM / wbb$Home_FGA) / 
+                    (wbb$Away_FGM / wbb$Away_FGA)
+
+# Home/Away eFG% ratio
+wbb$eFG_pct_ratio <- wbb$Home_eFG / wbb$Away_eFG
+```
+
+### Cleaning
+
+```{r}
+wbb_subset <- wbb %>% filter(Season == 2024 | Season == 2025) %>% dplyr::select(HomeWin:eFG_pct_ratio, NumOT)
+
+# add a few more variables
+wbb_subset$Home_R <- wbb_subset$Home_OR + wbb_subset$Home_DR
+wbb_subset$Away_R <- wbb_subset$Away_OR + wbb_subset$Away_DR
+wbb_subset$HomeWin <- as.factor(wbb_subset$HomeWin)
+
+head(wbb_subset)
+```
+
+#### Create a Test Dataset Using 2023 Season
+
+```{r}
+wbb_subset_test <- wbb %>% filter(Season == 2023) %>% dplyr::select(HomeWin:eFG_pct_ratio, NumOT)
+
+# add a few more variables
+wbb_subset_test$Home_R <- wbb_subset_test$Home_OR + wbb_subset_test$Home_DR
+wbb_subset_test$Away_R <- wbb_subset_test$Away_OR + wbb_subset_test$Away_DR
+wbb_subset_test$HomeWin <- as.factor(wbb_subset_test$HomeWin)
+
+head(wbb_subset_test)
+```
+
+## Logistic Regression
+
+Max model with all variables
+
+-   do not include unique identifiers or non-statistical variables (season, day number, team ID)
+
+-   since the location was used to create the response variable, do not include this either
+
+    -   more interested in how stats impact win vs lose because teams will have to play at home and away no matter what
+
+#### Test Model
+
+```{r}
+mod <- glm(HomeWin ~ Home_eFG + Away_eFG + TO_diff, family = binomial(), data = wbb_subset)
+
+summary(mod)
+vif(mod)
+```
+
+#### Backward Selection
+
+```{r, echo = TRUE, results='hide'}
+mod_max <- glm(HomeWin ~ . - Home_Score - Away_Score, data = wbb_subset, family = binomial())
+mod_back <- step(mod_max, direction = "backward")
+```
+
+```{r}
+summary(mod_back)
+vif(mod_back)
+
+adj_mod <- glm(HomeWin ~ Home_FGM + Home_FGM3 + Away_FGM3 + Home_FTM + Away_FTM, wbb_subset, family = binomial())
+summary(adj_mod)
+vif(adj_mod)
+```
+
+## Accuracy of Backwards Selection
+
+```{r}
+# confusion matrix using 24-25 data
+actual <- as.factor(wbb_subset$HomeWin)
+predict_probs <- predict(adj_mod, type = "response")
+predicted <- as.factor(ifelse(predict_probs > 0.5, 1, 0))
+
+conf_mat <- confusionMatrix(actual, predicted)
+conf_mat
+```
+
+#### Accuracy for Backwards Selection on Test Dataset
+
+```{r}
+actual <- as.factor(wbb_subset_test$HomeWin)
+predict_probs <- predict(adj_mod, newdata = wbb_subset_test, type = "response")
+predicted <- as.factor(ifelse(predict_probs > 0.5, 1, 0))
+
+conf_mat <- confusionMatrix(actual, predicted)
+conf_mat
+```
+
+## Variable Selection Using Subset for Max Model
+
+```{r}
+mod_max <- glm(HomeWin ~ Home_eFG + Away_eFG + Home_R + Away_R + Home_Ast + Away_Ast + TO_diff + FGM_diff + eFG_pct_ratio, 
+               family = binomial(), 
+               data = wbb_subset)
+summary(mod_max)
+
+# stepwise selection
+mod <- step(mod_max, direction = "both")
+summary(mod)
+vif(mod)
+
+# adjust for vif
+mod_adj <- glm(HomeWin ~ Home_eFG + Home_R + Away_R + TO_diff + FGM_diff, 
+               wbb_subset, 
+               family = binomial)
+summary(mod_adj)
+vif(mod_adj)
+```
+
+## Accuracy for Subset Max Model
+
+```{r}
+# confusion matrix using 24-25 data
+actual <- as.factor(wbb_subset$HomeWin)
+predict_probs <- predict(mod_adj, type = "response")
+predicted <- as.factor(ifelse(predict_probs > 0.5, 1, 0))
+
+conf_mat <- confusionMatrix(actual, predicted)
+conf_mat
+```
+
+### Accuracy for Stepwise Model on Test Dataset
+
+```{r}
+actual <- as.factor(wbb_subset_test$HomeWin)
+predict_probs <- predict(mod_adj, newdata = wbb_subset_test, type = "response")
+predicted <- as.factor(ifelse(predict_probs > 0.5, 1, 0))
+
+conf_mat <- confusionMatrix(actual, predicted)
+conf_mat
+```
+
+## ROC Curve
+
+```{r}
+library(pROC)
+# get the predicted probabilities (pi-hats)
+pi_hat <- predict(mod_adj, type = "response") # makes predictions off every observation in the data set
+
+# roc() has two inputs: the actual response and the pi-hats
+roc_obj <- roc(wbb_subset$HomeWin, pi_hat)
+auc_value <- auc(roc_obj)
+
+data.frame(fpr = 1 - roc_obj$specificities, tpr = roc_obj$sensitivities) %>%
+  ggplot(aes(x = fpr, y = tpr)) +
+  geom_line(color="maroon") +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "darkgrey") +
+  xlab("False Positive Rate") +
+  ylab("True Positive Rate")
+auc_value
+```
+
+## Check Deviance
+
+```{r}
+plot(fitted(mod_adj), residuals(mod_adj))
+plot(residuals(mod_adj))
+```
+
+## Compare With Random Forest
+
+Compare best logistic regression model with a Random Forest to show trade-offs between simplicity and accuracy.
+
+```{r}
+rf_model <- randomForest(
+  as.factor(HomeWin) ~ Home_eFG + Home_R + Away_R + TO_diff + FGM_diff,
+  data = wbb_subset,
+  importance = TRUE  # Shows variable importance
+)
+print(importance(rf_model))
+```
+
+#### Random Forest Accuracy on Test Dataset
+
+```{r}
+predict_probs <- predict(rf_model, newdata = wbb_subset_test)
+
+conf_matrix_rf <- confusionMatrix(predict_probs, wbb_subset_test$HomeWin)
+conf_matrix_rf
+```
+
+## Coefficient Plot
+
+```{r}
+library(ggplot2)
+coef_df <- data.frame(
+  Predictor = names(coef(mod_adj)),
+  Effect = coef(mod_adj)) %>% 
+  filter(Predictor != '(Intercept)')
+
+ggplot(coef_df, aes(x = Effect, y = reorder(Predictor, Effect))) +
+  geom_col(fill = "maroon") +
+  labs(title = "Key Factors Affecting Win Probability",
+       y = "Predictor", x = "Effect Size (Log-Odds)") +
+  theme_minimal()
+```
+
+Bars show which stats most influence win margins (longer = stronger effect).
