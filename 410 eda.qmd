@@ -1,0 +1,135 @@
+---
+title: "410 EDA"
+format: 
+  html:
+    self-contained: true
+    embed-resources: true
+editor: visual
+execute:
+  echo: true
+  eval: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+```
+
+## 410 Project EDA
+
+```{r, include=FALSE}
+library(tidyverse)
+library(ggpubr)
+library(MASS)
+```
+
+```{r}
+wbb <- read.csv("C:/Users/gigip/personal/personal projects/march madness/WRegularSeasonDetailedResults.csv")
+
+# make effective field goal percentage variable
+wbb <- wbb %>% mutate(WeFG = (WFGM + 0.5 * WFGM3) / WFGA, LeFG = (LFGM + 0.5 * LFGM3) / LFGA) 
+```
+
+look at variables
+
+```{r}
+summary(wbb)
+```
+
+Variables I want to look at:
+
+-   eFG%
+
+    -   eFG% = (Field Goals Made + 0.5 \* Three-Point Field Goals Made) / Field Goal Attempts.
+
+-   num TO
+
+-   FT %
+
+-   num assists
+
+-   num rebounds
+
+-   score and score difference between winning and losing teams
+
+-   location (as factor)
+
+### Histograms and Boxplots of Score Distribution for Winning and Losing Teams
+
+```{r}
+wscore <- wbb %>% ggplot(aes(x = WScore)) + geom_histogram() + theme_classic() + scale_x_continuous(n.breaks = 10, limits = c(30,120))
+lscore <- wbb %>% ggplot(aes(x = LScore)) + geom_histogram() + theme_classic() + scale_x_continuous(n.breaks = 10, limits = c(30,120))
+
+plt <- ggarrange(wscore, lscore, ncol = 1, nrow = 2)
+annotate_figure(plt, top = text_grob("Score Distribution for Winning and Losing Teams", 
+                face = "bold", size = 12))
+```
+
+```{r}
+wscore <- wbb %>% ggplot(aes(x = WScore)) + geom_boxplot() + theme_classic() + scale_x_continuous(n.breaks = 9, limits = c(30,120))
+lscore <- wbb %>% ggplot(aes(x = LScore)) + geom_boxplot() + theme_classic() + scale_x_continuous(n.breaks = 9, limits = c(30,120))
+
+plt <- ggarrange(wscore, lscore, ncol = 1, nrow = 2)
+annotate_figure(plt, top = text_grob("Score Distribution for Winning and Losing Teams", 
+                face = "bold", size = 12))
+```
+
+### Score Difference Between Winning and Losing Teams
+
+```{r}
+score_diff <- wbb %>% mutate(difference = WScore - LScore)
+mean(score_diff$difference)
+median(score_diff$difference)
+
+plt <- score_diff %>% ggplot(aes(x = difference)) + geom_boxplot() + ggtitle("Distribution of Score Difference between Winning and Losing Teams") 
+
+plt + theme(plot.title = element_text(hjust = 0.5)) + xlab('Difference in Score') + scale_x_continuous(n.breaks = 10)
+```
+
+```{r}
+wscore <- wbb %>% ggplot(aes(x = WeFG)) + geom_boxplot() + theme_classic() + scale_x_continuous(n.breaks = 10, limits = c(0,1))
+lscore <- wbb %>% ggplot(aes(x = LeFG)) + geom_boxplot() + theme_classic() + scale_x_continuous(n.breaks = 10, limits = c(0,1))
+
+plt <- ggarrange(wscore, lscore, ncol = 1, nrow = 2)
+annotate_figure(plt, top = text_grob("eFG% Distribution for Winning and Losing Teams", 
+                face = "bold", size = 12))
+
+# effective field goal % difference
+wbb %>% ggplot(aes(x = WeFG - LeFG)) + geom_boxplot() + theme_classic() + scale_x_continuous(n.breaks = 10, limits = c(-0.4,0.8)) + geom_vline(xintercept = 0, alpha = 0.2, color = 'red') + ggtitle("Difference in eFG%")
+median(wbb$WeFG - wbb$LeFG)
+```
+
+### Assists, Rebounds, and Turnovers
+
+```{r}
+# assists
+w <- wbb %>% ggplot(aes(x = WAst)) + geom_boxplot() + theme_classic() + scale_x_continuous(n.breaks = 10, limits = c(0,40))
+l <- wbb %>% ggplot(aes(x = LAst)) + geom_boxplot() + theme_classic() + scale_x_continuous(n.breaks = 10, limits = c(0,40))
+
+plt <- ggarrange(w, l, ncol = 1, nrow = 2)
+annotate_figure(plt, top = text_grob("Assist Distribution for Winning and Losing Teams", 
+                face = "bold", size = 12))
+```
+
+```{r}
+# rebounds
+mean(wbb$WOR + wbb$WDR)
+mean(wbb$LOR + wbb$LDR)
+
+w <- wbb %>% ggplot(aes(x = WOR + WDR)) + geom_boxplot() + theme_classic() + scale_x_continuous(n.breaks = 10, limits = c(0,100))
+l <- wbb %>% ggplot(aes(x = LOR + LDR)) + geom_boxplot() + theme_classic() + scale_x_continuous(n.breaks = 10, limits = c(0,100))
+
+plt <- ggarrange(w, l, ncol = 1, nrow = 2)
+annotate_figure(plt, top = text_grob("Rebound Distribution for Winning and Losing Teams",
+                face = "bold", size = 12))
+```
+
+```{r}
+# turnovers
+w <- wbb %>% ggplot(aes(x = WTO)) + geom_boxplot() + theme_classic() + scale_x_continuous(n.breaks = 10, limits = c(0,55))
+l <- wbb %>% ggplot(aes(x = LTO)) + geom_boxplot() + theme_classic() + scale_x_continuous(n.breaks = 10, limits = c(0,55))
+
+plt <- ggarrange(w, l, ncol = 1, nrow = 2)
+annotate_figure(plt, top = text_grob("Turnover Distribution for Winning and Losing Teams",
+                face = "bold", size = 12))
+```
+
